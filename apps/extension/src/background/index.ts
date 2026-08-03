@@ -34,6 +34,25 @@ async function ensureOffscreenDocument(): Promise<void> {
   });
 }
 
+function isMissingReceiverError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    /Receiving end does not exist/i.test(error.message)
+  );
+}
+
+async function sendOffscreenMessage(message: Record<string, unknown>, retry = true) {
+  try {
+    return await chrome.runtime.sendMessage(message);
+  } catch (error) {
+    if (retry && isMissingReceiverError(error)) {
+      await new Promise((resolve) => window.setTimeout(resolve, 150));
+      return chrome.runtime.sendMessage(message);
+    }
+    throw error;
+  }
+}
+
 async function activeMeetTab(): Promise<chrome.tabs.Tab> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id || !tab.url?.startsWith("https://meet.google.com/")) {
@@ -71,8 +90,11 @@ void syncSidePanelForOpenTabs();
 
 chrome.action.onClicked.addListener((tab) => {
   if (!tab.id || !isMeetUrl(tab.url)) return;
-  void chrome.sidePanel.setOptions({ tabId: tab.id, enabled: true });
-  void chrome.sidePanel.open({ tabId: tab.id });
+  void chrome.sidePanel.setOptions({
+    tabId: tab.id,
+    path: "sidepanel.html",
+    enabled: true,
+  });
 });
 
 chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendResponse) => {
@@ -96,8 +118,8 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
           type: "START_CAPTIONS",
           sessionId: message.sessionId,
           token: message.token
-        });
-        const result = await chrome.runtime.sendMessage({
+        }).catch(() => undefined);
+        const result = await sendOffscreenMessage({
           target: "offscreen",
           type: "START_CAPTURE_STREAMS",
           streamId,
@@ -116,7 +138,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
       if (activeTabId !== null) {
         await chrome.tabs.sendMessage(activeTabId, { type: "STOP_CAPTIONS" }).catch(() => undefined);
       }
-      const result = await chrome.runtime.sendMessage({ target: "offscreen", type: "STOP_CAPTURE_STREAMS" });
+      const result = await sendOffscreenMessage({ target: "offscreen", type: "STOP_CAPTURE_STREAMS" });
       activeTabId = null;
       sendResponse(result);
     })();
