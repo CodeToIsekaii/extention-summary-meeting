@@ -34,7 +34,7 @@ class ResourceController:
         logical_cpu_count: int | None = None,
         meeting_percent: int = 25,
         postprocess_percent: int = 50,
-        max_memory_gb: float = 4.0,
+        max_memory_gb: float = 5.0,
     ) -> None:
         self.process = process or psutil.Process()
         self.logical_cpu_count = logical_cpu_count or psutil.cpu_count(logical=True) or 1

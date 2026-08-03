@@ -28,7 +28,7 @@ class Settings:
     buffer_seconds: int = 30
     meeting_cpu_percent: int = 25
     postprocess_cpu_percent: int = 50
-    max_memory_gb: float = 4.0
+    max_memory_gb: float = 5.0
     whisper_model: str = "faster-whisper-medium"
     summary_model_file: str = "Qwen3-4B-Q5_K_M.gguf"
     whisper_device: str = "cpu"

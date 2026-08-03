@@ -7,7 +7,7 @@
   "stop_free_gb": 1,
   "meeting_cpu_percent": 25,
   "postprocess_cpu_percent": 50,
-  "max_memory_gb": 4,
+  "max_memory_gb": 5,
   "buffer_seconds": 30,
   "whisper_model": "faster-whisper-medium",
   "whisper_device": "cpu",

@@ -17,7 +17,7 @@ export function App() {
     }
     let objectUrl: string | null = null;
     void chrome.storage.local.get("helperToken").then(async ({ helperToken }) => {
-      if (!helperToken) throw new Error("Chưa cấu hình token helper trong side panel.");
+      if (!helperToken) throw new Error("Chưa cấu hình token backend local trong side panel.");
       const helper = new HelperClient(helperToken);
       setClient(helper);
       const [loadedMinutes, recording] = await Promise.all([

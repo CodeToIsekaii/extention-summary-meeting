@@ -238,7 +238,7 @@ export function App() {
 
       <section className="settings-card">
         <details>
-          <summary>Cài đặt helper</summary>
+          <summary>Cài đặt backend local</summary>
           <label htmlFor="helper-token">Token ghép cặp</label>
           <input
             id="helper-token"

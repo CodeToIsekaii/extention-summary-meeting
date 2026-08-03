@@ -1,6 +1,15 @@
-# Meet Assistant Local
+# Summary Meeting Local
 
 Chrome extension ghi âm Google Meet và tạo biên bản tiếng Việt hoàn toàn trên laptop. Audio, model AI, cache và dữ liệu tạm nằm dưới `D:\MyProject\extention summary meeting\runtime`.
+
+Nếu bạn quen tư duy fullstack, hãy hiểu đơn giản:
+
+- `extension` = lớp giao diện và capture trong Chrome
+- `backend local` = app chạy trên máy bạn để xử lý audio, AI, lưu file
+- `Whisper` = engine speech-to-text
+- `Qwen` = engine tóm tắt và trích xuất task
+
+Tài liệu giải thích chi tiết, dễ đọc cho người mới nằm ở [docs/project-guide.vi.md](/abs/path/D:/MyProject/extention%20summary%20meeting/docs/project-guide.vi.md).
 
 ## Cài đặt
 
@@ -13,15 +22,15 @@ Mở PowerShell tại thư mục dự án:
 
 Lệnh thứ hai tải khoảng 5 GB gồm Faster Whisper Medium, Qwen3 4B Q5_K_M và llama.cpp. Có thể dừng/chạy lại vì Hugging Face hỗ trợ tiếp tục tải.
 
-Trên máy này các model đã được cài trong `runtime\models` trên ổ D (khoảng 4.16 GB). Việc đặt model/Whisper trên ổ D là hoàn toàn bình thường; helper đã ép Hugging Face cache, TEMP, FFmpeg và file làm việc về `runtime` để không chiếm thêm ổ C.
+Trên máy này các model đã được cài trong `runtime\models` trên ổ D (khoảng 4.16 GB). Việc đặt model/Whisper trên ổ D là hoàn toàn bình thường; backend local đã ép Hugging Face cache, TEMP, FFmpeg và file làm việc về `runtime` để không chiếm thêm ổ C.
 
-## Chạy helper
+## Chạy backend local
 
 ```powershell
 .\scripts\start-helper.ps1
 ```
 
-Giữ cửa sổ helper chạy trong lúc dùng extension.
+Giữ cửa sổ backend local chạy trong lúc dùng extension.
 
 ## Cài extension vào Chrome
 
@@ -29,7 +38,7 @@ Giữ cửa sổ helper chạy trong lúc dùng extension.
 2. Bật **Developer mode**.
 3. Chọn **Load unpacked**.
 4. Chọn `D:\MyProject\extention summary meeting\apps\extension\dist`.
-5. Mở side panel Meet Assistant, mở `config\settings.json`, sao chép `auth_token` và dán vào **Cài đặt helper**.
+5. Mở side panel Summary Meeting, mở `config\settings.json`, sao chép `auth_token` và dán vào **Cài đặt backend local**.
 
 Hoặc mở một Chrome test riêng có profile/cache trên ổ D:
 
@@ -39,7 +48,7 @@ Hoặc mở một Chrome test riêng có profile/cache trên ổ D:
 
 ## Sử dụng
 
-1. Chạy helper và tham gia Google Meet.
+1. Chạy backend local và tham gia Google Meet.
 2. Tự bật captions trong Meet để giữ tên người nói tốt hơn.
 3. Mở side panel và bấm **Bắt đầu ghi**. Chrome sẽ hỏi quyền microphone.
 4. Có thể bấm **Tóm tắt ngay**; AI chạy chậm ở chế độ ưu tiên máy mượt.
@@ -67,4 +76,4 @@ Sau khi ghi một cuộc Meet thật, kiểm tra file, schema, evidence, cleanup
 
 ## Quyền riêng tư
 
-Helper chỉ lắng nghe `127.0.0.1`. Không có cloud backend. Bạn chịu trách nhiệm thông báo và xin phép người tham gia trước khi ghi âm.
+Backend local chỉ lắng nghe `127.0.0.1`. Không có cloud backend. Bạn chịu trách nhiệm thông báo và xin phép người tham gia trước khi ghi âm.

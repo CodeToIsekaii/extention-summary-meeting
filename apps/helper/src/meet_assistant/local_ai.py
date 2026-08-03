@@ -181,7 +181,7 @@ Transcript:
             "-t",
             str(self.threads),
             "-c",
-            "4096",
+            "8192",
             "-n",
             "768",
             "--temp",

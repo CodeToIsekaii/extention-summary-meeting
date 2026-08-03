@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Meet Assistant Local",
+  "name": "Summary Meeting Local",
   "version": "0.1.0",
   "description": "Ghi âm và tạo biên bản Google Meet hoàn toàn trên máy.",
   "minimum_chrome_version": "116",
@@ -11,7 +11,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Mở Meet Assistant"
+    "default_title": "Mở Summary Meeting"
   },
   "side_panel": {
     "default_path": "sidepanel.html"

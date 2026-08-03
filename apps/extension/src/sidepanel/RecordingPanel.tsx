@@ -59,10 +59,10 @@ export function RecordingPanel({
       <header className="panel-header">
         <div>
           <p className="eyebrow">LOCAL MEETING NOTES</p>
-          <h1>Meet Assistant</h1>
+          <h1>Summary Meeting</h1>
         </div>
         <span className={`status-dot ${helperReady ? "is-online" : "is-offline"}`}>
-          {helperReady ? "Helper sẵn sàng" : "Helper offline"}
+          {helperReady ? "Backend local sẵn sàng" : "Backend local offline"}
         </span>
       </header>
 
@@ -79,7 +79,7 @@ export function RecordingPanel({
         {state.error ? <p className="error-banner" role="alert">{state.error}</p> : null}
         {diskWarning ? <p className="warning-banner" role="alert">{diskWarning}</p> : null}
         {!tokenConfigured ? (
-          <p className="warning-banner">Nhập token ghép cặp helper trong phần Cài đặt.</p>
+          <p className="warning-banner">Nhập token ghép cặp backend local trong phần Cài đặt.</p>
         ) : null}
 
         <div className="primary-actions">
