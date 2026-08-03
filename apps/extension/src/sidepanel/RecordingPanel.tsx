@@ -12,6 +12,8 @@ interface RecordingPanelProps {
   processingPaused?: boolean;
   diskWarning?: string | null;
   notice?: string | null;
+  meetingTitle?: string;
+  onMeetingTitleChange?: (value: string) => void;
   onStart: () => void;
   onStop: () => void;
   onCheckpoint: () => void;
@@ -41,6 +43,8 @@ export function RecordingPanel({
   processingPaused = false,
   diskWarning = null,
   notice = null,
+  meetingTitle = "",
+  onMeetingTitleChange,
   onStart,
   onStop,
   onCheckpoint,
@@ -80,6 +84,19 @@ export function RecordingPanel({
         </p>
         {state.error ? <p className="error-banner" role="alert">{state.error}</p> : null}
         {notice ? <p className="error-banner" role="alert">{notice}</p> : null}
+        {!isRecording ? (
+          <label className="meeting-title-field" htmlFor="meeting-title">
+            Tên cuộc họp
+            <input
+              id="meeting-title"
+              type="text"
+              value={meetingTitle}
+              onChange={(event) => onMeetingTitleChange?.(event.target.value)}
+              placeholder="Ví dụ: Họp dự án Website ABC"
+              maxLength={160}
+            />
+          </label>
+        ) : null}
         {diskWarning ? <p className="warning-banner" role="alert">{diskWarning}</p> : null}
         {!tokenConfigured ? (
           <p className="warning-banner">Nhập token ghép cặp backend local trong phần Cài đặt.</p>

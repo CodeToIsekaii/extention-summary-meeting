@@ -23,6 +23,7 @@ export function App() {
   const [checkpointError, setCheckpointError] = useState<string | null>(null);
   const [pairingMessage, setPairingMessage] = useState<string | null>(null);
   const [retryingSessionId, setRetryingSessionId] = useState<string | null>(null);
+  const [meetingTitle, setMeetingTitle] = useState("");
   const client = useMemo(() => new HelperClient(token), [token]);
 
   const refreshHelper = useCallback(async () => {
@@ -177,7 +178,7 @@ export function App() {
       if (!tab?.url?.startsWith("https://meet.google.com/")) {
         throw new Error("Hãy mở Google Meet trong tab hiện tại.");
       }
-      const title = tab.title?.replace(/\s*-\s*Google Meet.*$/i, "").trim() || `Google Meet ${new Date().toLocaleString("vi-VN")}`;
+      const title = meetingTitle.trim() || tab.title?.replace(/\s*-\s*Google Meet.*$/i, "").trim() || `Google Meet ${new Date().toLocaleString("vi-VN")}`;
       const session = await client.createSession(title, tab.url);
       const startedAt = Date.now();
       await chrome.storage.local.set({ activeSession: { id: session.id, startedAt } });
@@ -284,6 +285,8 @@ export function App() {
         processingPaused={processingPaused}
         diskWarning={diskWarning}
         notice={checkpointError}
+        meetingTitle={meetingTitle}
+        onMeetingTitleChange={setMeetingTitle}
         onStart={start}
         onStop={stop}
         onCheckpoint={createCheckpoint}
