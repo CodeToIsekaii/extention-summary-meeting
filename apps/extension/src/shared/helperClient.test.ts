@@ -75,4 +75,20 @@ describe("HelperClient", () => {
 
     await expect(client.deleteSession("session-1")).resolves.toBeUndefined();
   });
+
+  it("can bootstrap a pairing token without sending Authorization", async () => {
+    const requests: Request[] = [];
+    const fetcher: typeof fetch = async (input, init) => {
+      const request = new Request(input, init);
+      requests.push(request);
+      return Response.json({ auth_token: "bootstrapped-token" });
+    };
+    const client = new HelperClient("", fetcher);
+
+    const pairing = await client.pair();
+
+    expect(pairing.auth_token).toBe("bootstrapped-token");
+    expect(requests[0].url).toBe("http://127.0.0.1:8765/v1/pairing");
+    expect(requests[0].headers.get("Authorization")).toBeNull();
+  });
 });

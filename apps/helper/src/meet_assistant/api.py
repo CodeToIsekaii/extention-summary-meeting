@@ -68,6 +68,10 @@ def create_app(
         disk = settings.disk_status()
         return {"status": "ok", "version": app.version, "disk": asdict(disk)}
 
+    @app.get("/v1/pairing")
+    def pairing() -> dict[str, str]:
+        return {"auth_token": settings.auth_token}
+
     @app.post(
         "/v1/sessions",
         status_code=status.HTTP_201_CREATED,

@@ -20,6 +20,7 @@ export function App() {
   const [recoverable, setRecoverable] = useState<SessionManifest[]>([]);
   const [processingPaused, setProcessingPaused] = useState(false);
   const [diskWarning, setDiskWarning] = useState<string | null>(null);
+  const [pairingMessage, setPairingMessage] = useState<string | null>(null);
   const client = useMemo(() => new HelperClient(token), [token]);
 
   const refreshHelper = useCallback(async () => {
@@ -143,6 +144,24 @@ export function App() {
     const normalized = tokenDraft.trim();
     await chrome.storage.local.set({ helperToken: normalized });
     setToken(normalized);
+    setPairingMessage(normalized ? "Đã lưu token backend local." : null);
+  };
+
+  const autoPair = async () => {
+    try {
+      setPairingMessage("Đang lấy token từ backend local...");
+      const pairingClient = new HelperClient("");
+      const pairing = await pairingClient.pair();
+      const nextToken = pairing.auth_token.trim();
+      await chrome.storage.local.set({ helperToken: nextToken });
+      setToken(nextToken);
+      setTokenDraft(nextToken);
+      setPairingMessage("Ghép cặp tự động thành công.");
+    } catch (error) {
+      setPairingMessage(
+        error instanceof Error ? error.message : "Không lấy được token từ backend local."
+      );
+    }
   };
 
   const start = async () => {
@@ -247,7 +266,13 @@ export function App() {
             onChange={(event) => setTokenDraft(event.target.value)}
             placeholder="Dán token từ config/settings.json"
           />
-          <button className="button button-secondary" onClick={saveToken}>Lưu token</button>
+          <div className="primary-actions">
+            <button className="button button-secondary" onClick={saveToken}>Lưu token</button>
+            <button className="button button-secondary" onClick={() => void autoPair()}>
+              Ghép cặp tự động
+            </button>
+          </div>
+          {pairingMessage ? <p>{pairingMessage}</p> : null}
           <p>Dữ liệu và model được giữ trong thư mục runtime trên ổ D.</p>
         </details>
       </section>

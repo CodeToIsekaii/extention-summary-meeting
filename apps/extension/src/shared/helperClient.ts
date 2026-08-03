@@ -101,6 +101,10 @@ export class HelperClient {
     return this.request("/health", {}, false);
   }
 
+  pair(): Promise<{ auth_token: string }> {
+    return this.request("/pairing", {}, false);
+  }
+
   createSession(title: string, meetUrl: string | null): Promise<SessionManifest> {
     return this.request("/sessions", {
       method: "POST",

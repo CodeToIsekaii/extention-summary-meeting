@@ -39,6 +39,13 @@ def test_health_is_public_and_reports_disk_state(client: TestClient) -> None:
     assert response.json()["disk"]["can_start"] is True
 
 
+def test_pairing_token_is_public_for_loopback_bootstrap(client: TestClient) -> None:
+    response = client.get("/v1/pairing")
+
+    assert response.status_code == 200
+    assert response.json() == {"auth_token": "test-secret"}
+
+
 def test_session_routes_require_exact_bearer_token(client: TestClient) -> None:
     missing = client.post("/v1/sessions", json={"title": "Private meeting"})
     wrong = client.post(
