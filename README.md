@@ -1,6 +1,6 @@
 # Summary Meeting Local
 
-Chrome extension ghi âm Google Meet và tạo biên bản tiếng Việt hoàn toàn trên laptop. Audio, model AI, cache và dữ liệu tạm nằm dưới `D:\MyProject\extention summary meeting\runtime`.
+Chrome extension ghi âm Google Meet và tạo biên bản tiếng Việt hoàn toàn trên laptop. Audio, model AI, cache và dữ liệu tạm nằm dưới `D:\MyProject\extention summary meeting\runtime` maysy tôi máy bạn thì tự sửa theo ý bạn.
 
 Nếu bạn quen tư duy fullstack, hãy hiểu đơn giản:
 
