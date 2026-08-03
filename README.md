@@ -46,7 +46,7 @@ Giữ cửa sổ backend local chạy trong lúc dùng extension.
 2. Bật **Developer mode**.
 3. Chọn **Load unpacked**.
 4. Chọn `D:\MyProject\extention summary meeting\apps\extension\dist`.
-5. Mở side panel Summary Meeting, mở `config\settings.json`, sao chép `auth_token` và dán vào **Cài đặt backend local**.
+5. Mở side panel Summary Meeting. Trong **Cài đặt backend local**, bấm **Ghép cặp tự động** (hoặc sao chép `auth_token` từ `config\settings.json` rồi dán vào ô token).
 
 Hoặc mở một Chrome test riêng có profile/cache trên ổ D:
 
@@ -58,13 +58,25 @@ Hoặc mở một Chrome test riêng có profile/cache trên ổ D:
 
 1. Chạy backend local và tham gia Google Meet.
 2. Tự bật captions trong Meet để giữ tên người nói tốt hơn.
-3. Mở side panel và bấm **Bắt đầu ghi**. Chrome sẽ hỏi quyền microphone.
+3. Mở side panel, nhập **Tên cuộc họp** (ví dụ `Họp dự án Website ABC`), rồi bấm **Bắt đầu ghi**. Chrome sẽ hỏi quyền microphone.
+   Tên phòng kiểu `bpt-dpdd-moa` chỉ là mã Google Meet; nếu bỏ trống tên, extension mới dùng tiêu đề tab làm dự phòng.
 4. Có thể bấm **Tóm tắt ngay**; AI chạy chậm ở chế độ ưu tiên máy mượt.
 5. Bấm **Dừng và xử lý** trước khi rời phòng. Sau khi hoàn tất, mở biên bản từ side panel.
 
 Trong lúc hậu xử lý có thể **Tạm dừng**, **Tiếp tục** hoặc chọn **Chế độ Nhanh**. Trang biên bản hỗ trợ sửa nội dung, tìm transcript, phát audio theo timestamp, **Chạy lại AI**, xuất Markdown và HTML.
 
 Mỗi meeting hoàn chỉnh chỉ giữ `recording.webm` và `minutes.json` trong `runtime\meetings`.
+
+### Cập nhật extension sau khi kéo code mới
+
+Chạy build bằng Git Bash:
+
+```bash
+cd "/d/MyProject/extention summary meeting/apps/extension"
+npm run build
+```
+
+Sau đó mở `chrome://extensions` và bấm **Reload** ở Summary Meeting Local. File ghi âm nằm tại `runtime\meetings\<tên-cuộc-họp>\recording.webm`; phiên lỗi tạm thời nằm trong `runtime\work` để có thể **Xử lý lại**.
 
 ## Kiểm thử
 
