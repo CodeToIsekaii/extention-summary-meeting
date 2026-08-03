@@ -197,5 +197,11 @@ chrome.runtime.onMessage.addListener((message: StartMessage, _sender, sendRespon
     void stopCapture(true).then(sendResponse);
     return true;
   }
+  if (message.type === "RESET_CAPTURE_STREAMS") {
+    // Used before starting a new session. It must not finalize the previous
+    // session, and it clears any queued chunks belonging to a deleted session.
+    void stopCapture(false).then(sendResponse);
+    return true;
+  }
   return false;
 });

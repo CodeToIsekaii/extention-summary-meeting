@@ -15,7 +15,7 @@ export class HelperError extends Error {
 }
 
 export function isFatalUploadError(error: unknown): boolean {
-  return error instanceof HelperError && error.code === "disk_stop";
+  return error instanceof HelperError && ["disk_stop", "session_not_found"].includes(error.code);
 }
 
 async function blobBytes(blob: Blob): Promise<Uint8Array<ArrayBuffer>> {

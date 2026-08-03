@@ -102,6 +102,10 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
   if (message.type === "START_CAPTURE") {
     void (async () => {
       try {
+        // tabCapture allows only one active stream per tab. A previous
+        // offscreen stream may survive a panel reload, so clean it first.
+        await sendOffscreenMessage({ target: "offscreen", type: "RESET_CAPTURE_STREAMS" }).catch(() => undefined);
+        activeTabId = null;
         const tab = await activeMeetTab();
         activeTabId = tab.id!;
         const streamId = await new Promise<string>((resolve, reject) => {
