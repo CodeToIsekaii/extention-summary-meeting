@@ -53,12 +53,14 @@ export interface JobState {
   output_dir?: string | null;
 }
 
+const DEFAULT_FETCHER: typeof fetch = (...args) => globalThis.fetch(...args);
+
 export class HelperClient {
   readonly token: string;
   readonly fetcher: typeof fetch;
   readonly baseUrl: string;
 
-  constructor(token: string, fetcher: typeof fetch = fetch, baseUrl = DEFAULT_BASE_URL) {
+  constructor(token: string, fetcher: typeof fetch = DEFAULT_FETCHER, baseUrl = DEFAULT_BASE_URL) {
     this.token = token;
     this.fetcher = fetcher;
     this.baseUrl = baseUrl.replace(/\/$/, "");
@@ -71,7 +73,9 @@ export class HelperClient {
     const response = await this.fetcher(`${this.baseUrl}${path}`, {
       ...init,
       headers,
-      signal: init.signal ?? AbortSignal.timeout(8000)
+      // Model loading and status checks can take longer on a local CPU.
+      // Keep the request bounded, but do not fail healthy jobs after 8 seconds.
+      signal: init.signal ?? AbortSignal.timeout(30000)
     });
     if (!response.ok) {
       let code = "helper_error";

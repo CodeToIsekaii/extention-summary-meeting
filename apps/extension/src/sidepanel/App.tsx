@@ -21,6 +21,7 @@ export function App() {
   const [processingPaused, setProcessingPaused] = useState(false);
   const [diskWarning, setDiskWarning] = useState<string | null>(null);
   const [pairingMessage, setPairingMessage] = useState<string | null>(null);
+  const [retryingSessionId, setRetryingSessionId] = useState<string | null>(null);
   const client = useMemo(() => new HelperClient(token), [token]);
 
   const refreshHelper = useCallback(async () => {
@@ -86,8 +87,12 @@ export function App() {
               await chrome.storage.local.remove("activeSession");
             }
           }
-        } catch {
-          // Health polling will expose an offline helper without discarding recovery metadata.
+        } catch (error) {
+          // A session can have been deleted manually while Chrome still has its id.
+          if (error instanceof Error && /404|not found|session_not_found/i.test(error.message)) {
+            await chrome.storage.local.remove("activeSession");
+            dispatch({ type: "RESET" });
+          }
         }
       }
     });
@@ -123,7 +128,7 @@ export function App() {
           window.clearInterval(interval);
         }
       } catch {
-        // Continue polling; helper may be restarting.
+        // Continue polling; helper may be busy or restarting.
       }
     }, 2000);
     return () => window.clearInterval(interval);
@@ -217,6 +222,31 @@ export function App() {
     setRecoverable((items) => items.filter((item) => item.id !== sessionId));
   };
 
+  const retryRecovery = async (session: SessionManifest) => {
+    if (retryingSessionId) return;
+    try {
+      setRetryingSessionId(session.id);
+      setPairingMessage(`Đang xử lý lại “${session.title}”…`);
+      const job = await client.retry(session.id);
+      await chrome.storage.local.set({ activeSession: { id: session.id, startedAt: Date.now() } });
+      dispatch({ type: "START_REQUESTED" });
+      dispatch({ type: "STARTED", sessionId: session.id, startedAt: Date.now() });
+      if (job.status === "processing" || job.status === "paused") {
+        dispatch({ type: "PROCESSING" });
+        setProcessingPaused(job.status === "paused");
+      }
+      setRecoverable((items) => items.map((item) => item.id === session.id ? { ...item, status: "processing" } : item));
+    } catch (error) {
+      if (error instanceof Error && /404|not found|session_not_found/i.test(error.message)) {
+        setRecoverable((items) => items.filter((item) => item.id !== session.id));
+        await chrome.storage.local.remove("activeSession");
+      }
+      setPairingMessage(error instanceof Error ? error.message : "Không thể xử lý lại phiên này.");
+    } finally {
+      setRetryingSessionId(null);
+    }
+  };
+
   const pauseProcessing = async () => {
     if (!state.sessionId) return;
     await client.pause(state.sessionId);
@@ -285,7 +315,9 @@ export function App() {
             <div className="recovery-row" key={session.id}>
               <div><strong>{session.title}</strong><span>{session.status}</span></div>
               <div className="recovery-actions">
-                <button className="button button-secondary" onClick={() => void client.retry(session.id)}>Xử lý lại</button>
+                <button className="button button-secondary" disabled={retryingSessionId === session.id} onClick={() => void retryRecovery(session)}>
+                  {retryingSessionId === session.id ? "Đang xử lý…" : "Xử lý lại"}
+                </button>
                 <button className="button button-quiet" onClick={() => void deleteRecovery(session.id)}>Xóa</button>
               </div>
             </div>
