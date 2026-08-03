@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "meet-assistant-helper"
+version = "0.1.0"
+description = "Loopback-only local helper for Meet Assistant"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn>=0.34,<1",
+  "pydantic>=2.10,<3",
+  "python-multipart>=0.0.20,<1",
+  "psutil>=6.1,<8",
+  "imageio-ffmpeg>=0.6,<1"
+]
+
+[project.optional-dependencies]
+ai = [
+  "faster-whisper>=1.1,<2",
+  "huggingface-hub>=0.28,<1"
+]
+dev = [
+  "httpx>=0.28,<1",
+  "pytest>=8.3,<9",
+  "pytest-asyncio>=0.25,<1",
+  "ruff>=0.9,<1"
+]
+
+[project.scripts]
+meet-assistant-helper = "meet_assistant.main:run"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+

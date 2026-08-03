@@ -1,0 +1,15 @@
+{
+  "runtime_root": "D:\\MyProject\\extention summary meeting\\runtime",
+  "helper_host": "127.0.0.1",
+  "helper_port": 8765,
+  "minimum_start_free_gb": 5,
+  "warning_free_gb": 3,
+  "stop_free_gb": 1,
+  "meeting_cpu_percent": 25,
+  "postprocess_cpu_percent": 50,
+  "buffer_seconds": 30,
+  "whisper_model": "medium",
+  "summary_model_file": "Qwen3-4B-Q5_K_M.gguf",
+  "language": "vi"
+}
+

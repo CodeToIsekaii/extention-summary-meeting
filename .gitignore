@@ -1,0 +1,17 @@
+.venv/
+node_modules/
+dist/
+coverage/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Meeting data, models, and package-manager caches always stay local on D:.
+runtime/*
+!runtime/.gitkeep
+
+# Local secrets and generated configuration.
+config/settings.json
+apps/extension/.env.local
+
