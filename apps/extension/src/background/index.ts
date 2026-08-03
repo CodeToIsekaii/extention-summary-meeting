@@ -42,8 +42,37 @@ async function activeMeetTab(): Promise<chrome.tabs.Tab> {
   return tab;
 }
 
+async function syncSidePanelForOpenTabs(): Promise<void> {
+  const tabs = await chrome.tabs.query({});
+  await Promise.all(
+    tabs
+      .filter((tab): tab is chrome.tabs.Tab & { id: number } => typeof tab.id === "number")
+      .map((tab) =>
+        chrome.sidePanel.setOptions({
+          tabId: tab.id,
+          enabled: isMeetUrl(tab.url)
+        })
+      )
+  );
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  void syncSidePanelForOpenTabs();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  void syncSidePanelForOpenTabs();
+});
+
+void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+void syncSidePanelForOpenTabs();
+
+chrome.action.onClicked.addListener((tab) => {
+  if (!tab.id || !isMeetUrl(tab.url)) return;
+  void chrome.sidePanel.setOptions({ tabId: tab.id, enabled: true });
+  void chrome.sidePanel.open({ tabId: tab.id });
 });
 
 chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendResponse) => {
