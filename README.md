@@ -31,6 +31,12 @@ Giữ cửa sổ helper chạy trong lúc dùng extension.
 4. Chọn `D:\MyProject\extention summary meeting\apps\extension\dist`.
 5. Mở side panel Meet Assistant, mở `config\settings.json`, sao chép `auth_token` và dán vào **Cài đặt helper**.
 
+Hoặc mở một Chrome test riêng có profile/cache trên ổ D:
+
+```powershell
+.\scripts\launch-chrome-test.ps1
+```
+
 ## Sử dụng
 
 1. Chạy helper và tham gia Google Meet.
@@ -52,6 +58,12 @@ Mỗi meeting hoàn chỉnh chỉ giữ `recording.webm` và `minutes.json` tron
 ```
 
 `verify.ps1` chạy unit test, lint và production build. Hai smoke script nạp model thật; `smoke_e2e.py` còn tạo một phiên giả lập qua toàn bộ API/pipeline. Việc cấp quyền tab/mic trong Google Meet thật cần kiểm tra thủ công vì Chrome không cho tự động hóa permission prompt ổn định.
+
+Sau khi ghi một cuộc Meet thật, kiểm tra file, schema, evidence, cleanup và khả năng giải mã audio bằng:
+
+```powershell
+.\scripts\validate-latest-meeting.ps1
+```
 
 ## Quyền riêng tư
 

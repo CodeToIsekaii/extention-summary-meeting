@@ -22,4 +22,23 @@ try {
 
 $settings = Get-Content -Raw -LiteralPath (Join-Path $projectRoot 'config\settings.json') | ConvertFrom-Json
 if (-not ([string]$settings.runtime_root).StartsWith('D:\')) { throw 'runtime_root is not on D:.' }
+
+$parseErrors = @()
+Get-ChildItem -LiteralPath (Join-Path $projectRoot 'scripts') -Filter '*.ps1' | ForEach-Object {
+    $tokens = $null
+    $errors = $null
+    [System.Management.Automation.Language.Parser]::ParseFile(
+        $_.FullName,
+        [ref]$tokens,
+        [ref]$errors
+    ) | Out-Null
+    if ($errors) { $parseErrors += $errors }
+}
+if ($parseErrors.Count -gt 0) {
+    $parseErrors | Format-List
+    throw 'PowerShell syntax verification failed.'
+}
+
+$distManifest = Join-Path $projectRoot 'apps\extension\dist\manifest.json'
+if (-not (Test-Path -LiteralPath $distManifest)) { throw 'Extension dist manifest is missing.' }
 Write-Host 'Verification complete.' -ForegroundColor Green
