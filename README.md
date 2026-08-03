@@ -38,6 +38,8 @@ Nếu bạn dùng Git Bash:
 ./scripts/start-helper.sh
 ```
 
+Nếu dùng Windows và không muốn gõ lệnh, double-click file `scripts\start-backend.bat`.
+
 Giữ cửa sổ backend local chạy trong lúc dùng extension.
 
 ## Cài extension vào Chrome
