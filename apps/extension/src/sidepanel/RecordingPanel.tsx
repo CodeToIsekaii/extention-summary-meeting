@@ -11,6 +11,7 @@ interface RecordingPanelProps {
   checkpoint?: MeetingMinutes | null;
   processingPaused?: boolean;
   diskWarning?: string | null;
+  notice?: string | null;
   onStart: () => void;
   onStop: () => void;
   onCheckpoint: () => void;
@@ -39,6 +40,7 @@ export function RecordingPanel({
   checkpoint,
   processingPaused = false,
   diskWarning = null,
+  notice = null,
   onStart,
   onStop,
   onCheckpoint,
@@ -77,6 +79,7 @@ export function RecordingPanel({
             : phaseLabels[state.phase]}
         </p>
         {state.error ? <p className="error-banner" role="alert">{state.error}</p> : null}
+        {notice ? <p className="error-banner" role="alert">{notice}</p> : null}
         {diskWarning ? <p className="warning-banner" role="alert">{diskWarning}</p> : null}
         {!tokenConfigured ? (
           <p className="warning-banner">Nhập token ghép cặp backend local trong phần Cài đặt.</p>

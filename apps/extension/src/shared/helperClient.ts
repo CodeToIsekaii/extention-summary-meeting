@@ -139,7 +139,10 @@ export class HelperClient {
   }
 
   checkpoint(sessionId: string): Promise<MeetingMinutes> {
-    return this.request(`/sessions/${sessionId}/checkpoint`, { method: "POST" });
+    return this.request(`/sessions/${sessionId}/checkpoint`, {
+      method: "POST",
+      signal: AbortSignal.timeout(300000)
+    });
   }
 
   finalize(sessionId: string): Promise<JobState> {

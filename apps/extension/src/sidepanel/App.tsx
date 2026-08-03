@@ -20,6 +20,7 @@ export function App() {
   const [recoverable, setRecoverable] = useState<SessionManifest[]>([]);
   const [processingPaused, setProcessingPaused] = useState(false);
   const [diskWarning, setDiskWarning] = useState<string | null>(null);
+  const [checkpointError, setCheckpointError] = useState<string | null>(null);
   const [pairingMessage, setPairingMessage] = useState<string | null>(null);
   const [retryingSessionId, setRetryingSessionId] = useState<string | null>(null);
   const client = useMemo(() => new HelperClient(token), [token]);
@@ -206,9 +207,15 @@ export function App() {
   const createCheckpoint = async () => {
     if (!state.sessionId) return;
     try {
+      setCheckpointError("Đang tạo tóm tắt, cuộc họp vẫn tiếp tục được ghi…");
       setCheckpoint(await client.checkpoint(state.sessionId));
+      setCheckpointError(null);
     } catch (error) {
-      dispatch({ type: "FAILED", message: error instanceof Error ? error.message : String(error) });
+      setCheckpointError(
+        error instanceof Error
+          ? `Tóm tắt tạm thời thất bại: ${error.message}`
+          : "Tóm tắt tạm thời thất bại. Cuộc họp vẫn đang được ghi."
+      );
     }
   };
 
@@ -276,6 +283,7 @@ export function App() {
         checkpoint={checkpoint}
         processingPaused={processingPaused}
         diskWarning={diskWarning}
+        notice={checkpointError}
         onStart={start}
         onStop={stop}
         onCheckpoint={createCheckpoint}
