@@ -29,6 +29,7 @@ const uploads: Record<AudioSource, Promise<void>> = {
   remote: Promise.resolve(),
   me: Promise.resolve()
 };
+const flushing: Record<AudioSource, boolean> = { remote: false, me: false };
 
 function broadcast(type: string, payload: Record<string, unknown> = {}): void {
   void chrome.runtime.sendMessage({ type, ...payload }).catch(() => undefined);
@@ -58,11 +59,20 @@ function scheduleRetry(): void {
 
 async function flushQueue(source: AudioSource): Promise<void> {
   if (!client || !sessionId) return;
+  // Recorder callbacks and the retry timer can both ask for a flush. Only
+  // one request per track may be in flight, otherwise the same sequence gets
+  // uploaded twice and the backend correctly returns 409 Conflict.
+  if (flushing[source]) return;
+  flushing[source] = true;
   const queue = queues[source];
-  while (queue.peek()) {
-    const chunk = queue.peek()!;
-    await client.uploadChunk(sessionId, chunk);
-    queue.acknowledge(source, chunk.sequence);
+  try {
+    while (queue.peek()) {
+      const chunk = queue.peek()!;
+      await client.uploadChunk(sessionId, chunk);
+      queue.acknowledge(source, chunk.sequence);
+    }
+  } finally {
+    flushing[source] = false;
   }
 }
 
@@ -119,6 +129,8 @@ async function startCapture(message: StartMessage): Promise<{ ok: boolean; error
     sequences.me = 0;
     queues.remote.clear();
     queues.me.clear();
+    flushing.remote = false;
+    flushing.me = false;
     stopRetryTimer();
     tabStream = await navigator.mediaDevices.getUserMedia({
       audio: {
