@@ -46,8 +46,13 @@ def test_append_chunk_checks_checksum_and_sequence(repository: MeetingRepository
     assert receipt.bytes_written == len(payload)
     assert repository.expected_sequence(session.id, "remote") == 1
 
-    with pytest.raises(ChunkConflictError, match="expected sequence 1"):
-        repository.append_chunk(session.id, metadata, payload)
+    duplicate = repository.append_chunk(session.id, metadata, payload)
+    assert duplicate.sequence == 0
+    assert repository.expected_sequence(session.id, "remote") == 1
+
+    different = metadata.model_copy(update={"sha256": sha256(b"different").hexdigest()})
+    with pytest.raises(ChunkConflictError, match="does not match stored payload"):
+        repository.append_chunk(session.id, different, b"different")
 
 
 def test_append_chunk_rejects_corrupt_payload(repository: MeetingRepository) -> None:
@@ -62,6 +67,29 @@ def test_append_chunk_rejects_corrupt_payload(repository: MeetingRepository) -> 
 
     with pytest.raises(ChunkConflictError, match="checksum"):
         repository.append_chunk(session.id, metadata, b"corrupt")
+
+
+def test_finalize_verification_detects_chunk_corrupted_after_upload(
+    repository: MeetingRepository,
+) -> None:
+    session = repository.create_session(SessionCreate(title="Recovery integrity"))
+    payload = b"valid-on-upload"
+    repository.append_chunk(
+        session.id,
+        ChunkMetadata(
+            source="remote",
+            sequence=0,
+            started_at_ms=0,
+            duration_ms=5000,
+            sha256=sha256(payload).hexdigest(),
+        ),
+        payload,
+    )
+    chunk = repository.work_path(session.id) / "chunks" / "remote" / "00000000.webm"
+    chunk.write_bytes(b"damaged-later")
+
+    with pytest.raises(ChunkConflictError, match="checksum mismatch"):
+        repository.verify_chunks(session.id)
 
 
 def test_append_captions_deduplicates_identical_observer_events(
@@ -91,4 +119,3 @@ def test_list_recoverable_excludes_completed_sessions(repository: MeetingReposit
     recoverable = repository.list_recoverable()
 
     assert [item.id for item in recoverable] == [active.id]
-

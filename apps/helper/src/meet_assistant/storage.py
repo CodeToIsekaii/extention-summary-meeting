@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
@@ -13,10 +14,12 @@ from .domain import (
     CaptionSegment,
     ChunkMetadata,
     ChunkReceipt,
+    MeetingMinutes,
     SessionCreate,
     SessionManifest,
     SessionStatus,
 )
+from .summarization import enforce_evidence_policy
 
 
 class SessionNotFoundError(KeyError):
@@ -76,8 +79,6 @@ class MeetingRepository:
     ) -> ChunkReceipt:
         manifest = self.load_manifest(session_id)
         expected = manifest.next_sequence[metadata.source]
-        if metadata.sequence != expected:
-            raise ChunkConflictError(f"expected sequence {expected}, got {metadata.sequence}")
         actual_checksum = sha256(payload).hexdigest()
         if actual_checksum != metadata.sha256:
             raise ChunkConflictError("chunk checksum does not match payload")
@@ -87,10 +88,35 @@ class MeetingRepository:
             / metadata.source
             / f"{metadata.sequence:08d}.webm"
         )
+        if metadata.sequence < expected:
+            existing = next(
+                (
+                    item
+                    for item in manifest.chunks[metadata.source]
+                    if item.sequence == metadata.sequence
+                ),
+                None,
+            )
+            if (
+                existing is not None
+                and existing.sha256 == actual_checksum
+                and target.is_file()
+                and sha256(target.read_bytes()).hexdigest() == actual_checksum
+            ):
+                return ChunkReceipt(
+                    source=metadata.source,
+                    sequence=metadata.sequence,
+                    bytes_written=len(payload),
+                    sha256=actual_checksum,
+                )
+            raise ChunkConflictError("duplicate chunk does not match stored payload")
+        if metadata.sequence > expected:
+            raise ChunkConflictError(f"expected sequence {expected}, got {metadata.sequence}")
         temporary = target.with_suffix(".webm.tmp")
         temporary.write_bytes(payload)
         os.replace(temporary, target)
         manifest.next_sequence[metadata.source] = expected + 1
+        manifest.chunks[metadata.source].append(metadata)
         self._save_manifest(manifest)
         return ChunkReceipt(
             source=metadata.source,
@@ -98,6 +124,23 @@ class MeetingRepository:
             bytes_written=len(payload),
             sha256=actual_checksum,
         )
+
+    def verify_chunks(self, session_id: str) -> None:
+        manifest = self.load_manifest(session_id)
+        for source in ("remote", "me"):
+            expected = manifest.chunks[source]
+            if [item.sequence for item in expected] != list(range(len(expected))):
+                raise ChunkConflictError(f"{source} chunk sequence is incomplete")
+            source_dir = self.work_path(session_id) / "chunks" / source
+            files = sorted(source_dir.glob("*.webm"))
+            expected_names = [f"{item.sequence:08d}.webm" for item in expected]
+            if [item.name for item in files] != expected_names:
+                raise ChunkConflictError(f"{source} chunk files do not match manifest")
+            for metadata, path in zip(expected, files, strict=True):
+                if sha256(path.read_bytes()).hexdigest() != metadata.sha256:
+                    raise ChunkConflictError(
+                        f"{source} chunk {metadata.sequence} checksum mismatch"
+                    )
 
     def load_captions(self, session_id: str) -> list[CaptionSegment]:
         self.load_manifest(session_id)
@@ -108,9 +151,7 @@ class MeetingRepository:
         self, session_id: str, captions: list[CaptionSegment]
     ) -> CaptionAppendResult:
         existing = self.load_captions(session_id)
-        fingerprints = {
-            (item.start_ms, item.end_ms, item.speaker, item.text) for item in existing
-        }
+        fingerprints = {(item.start_ms, item.end_ms, item.speaker, item.text) for item in existing}
         accepted = 0
         for caption in captions:
             fingerprint = (caption.start_ms, caption.end_ms, caption.speaker, caption.text)
@@ -151,3 +192,39 @@ class MeetingRepository:
                 manifests.append(manifest)
         return sorted(manifests, key=lambda item: item.started_at)
 
+    def _find_minutes_path(self, session_id: str) -> Path:
+        for path in self.settings.meetings_dir.glob("*/minutes.json"):
+            try:
+                value = MeetingMinutes.model_validate_json(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if value.meeting_id == session_id:
+                return path
+        raise SessionNotFoundError(session_id)
+
+    def load_minutes(self, session_id: str) -> MeetingMinutes:
+        path = self._find_minutes_path(session_id)
+        return MeetingMinutes.model_validate_json(path.read_text(encoding="utf-8"))
+
+    def update_minutes(self, session_id: str, patch: dict[str, Any]) -> MeetingMinutes:
+        path = self._find_minutes_path(session_id)
+        current = MeetingMinutes.model_validate_json(path.read_text(encoding="utf-8"))
+        mutable = current.model_dump(mode="json")
+        mutable.update({key: value for key, value in patch.items() if key != "meeting_id"})
+        mutable["meeting_id"] = session_id
+        updated = enforce_evidence_policy(MeetingMinutes.model_validate(mutable))
+        self._atomic_json(path, updated.model_dump(mode="json"))
+        return updated
+
+    def recording_path(self, session_id: str) -> Path:
+        path = self._find_minutes_path(session_id).parent / "recording.webm"
+        if not path.is_file():
+            raise SessionNotFoundError(session_id)
+        return path
+
+    def delete_recoverable(self, session_id: str) -> None:
+        self.load_manifest(session_id)
+        target = self.work_path(session_id).resolve()
+        if not target.is_relative_to(self.settings.work_dir.resolve()):
+            raise ValueError("session path escaped work directory")
+        shutil.rmtree(target)

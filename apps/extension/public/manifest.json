@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Meet Assistant Local",
+  "version": "0.1.0",
+  "description": "Ghi âm và tạo biên bản Google Meet hoàn toàn trên máy.",
+  "minimum_chrome_version": "116",
+  "permissions": ["activeTab", "tabCapture", "offscreen", "sidePanel", "storage"],
+  "host_permissions": ["https://meet.google.com/*", "http://127.0.0.1:8765/*"],
+  "background": {
+    "service_worker": "assets/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Mở Meet Assistant"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://meet.google.com/*"],
+      "js": ["assets/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

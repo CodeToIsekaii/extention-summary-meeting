@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 from dataclasses import dataclass
@@ -25,6 +26,13 @@ class Settings:
     warning_free_gb: float = 3.0
     stop_free_gb: float = 1.0
     buffer_seconds: int = 30
+    meeting_cpu_percent: int = 25
+    postprocess_cpu_percent: int = 50
+    max_memory_gb: float = 4.0
+    whisper_model: str = "faster-whisper-medium"
+    summary_model_file: str = "Qwen3-4B-Q5_K_M.gguf"
+    whisper_device: str = "cpu"
+    whisper_compute_type: str = "int8"
 
     def __post_init__(self) -> None:
         self.project_root = Path(self.project_root).resolve()
@@ -35,6 +43,10 @@ class Settings:
             raise ValueError("helper_host must be 127.0.0.1")
         if not self.stop_free_gb < self.warning_free_gb < self.minimum_start_free_gb:
             raise ValueError("disk thresholds must satisfy stop < warning < start")
+        if not 1 <= self.meeting_cpu_percent <= self.postprocess_cpu_percent <= 100:
+            raise ValueError("CPU limits must satisfy 1 <= meeting <= postprocess <= 100")
+        if self.max_memory_gb <= 0:
+            raise ValueError("max_memory_gb must be positive")
 
     @property
     def models_dir(self) -> Path:
@@ -70,14 +82,36 @@ class Settings:
         )
 
     @classmethod
-    def for_project(cls, project_root: Path | None = None) -> "Settings":
+    def for_project(cls, project_root: Path | None = None) -> Settings:
         root = (project_root or Path(__file__).resolve().parents[4]).resolve()
-        runtime = root / "runtime"
-        return cls(
-            project_root=root,
-            runtime_root=runtime,
-            auth_token=os.environ.get("MEET_ASSISTANT_TOKEN", "development-token-change-me"),
+        values: dict = {}
+        config_path = root / "config" / "settings.json"
+        if config_path.is_file():
+            values = json.loads(config_path.read_text(encoding="utf-8"))
+        allowed = {
+            "runtime_root",
+            "helper_host",
+            "helper_port",
+            "auth_token",
+            "minimum_start_free_gb",
+            "warning_free_gb",
+            "stop_free_gb",
+            "buffer_seconds",
+            "meeting_cpu_percent",
+            "postprocess_cpu_percent",
+            "max_memory_gb",
+            "whisper_model",
+            "summary_model_file",
+            "whisper_device",
+            "whisper_compute_type",
+        }
+        configured = {key: value for key, value in values.items() if key in allowed}
+        configured["runtime_root"] = Path(configured.get("runtime_root", root / "runtime"))
+        configured["auth_token"] = os.environ.get(
+            "MEET_ASSISTANT_TOKEN",
+            configured.get("auth_token", "development-token-change-me"),
         )
+        return cls(project_root=root, **configured)
 
 
 def configure_process_environment(settings: Settings) -> None:
@@ -106,4 +140,3 @@ def configure_process_environment(settings: Settings) -> None:
             "TEMP": str(settings.temp_dir),
         }
     )
-

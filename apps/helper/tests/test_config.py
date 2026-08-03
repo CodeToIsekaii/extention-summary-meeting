@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -46,3 +47,30 @@ def test_disk_status_enforces_start_warning_and_stop_thresholds(
     assert status.warning is False
     assert status.must_stop is False
 
+
+def test_for_project_loads_token_and_runtime_from_project_config(tmp_path: Path) -> None:
+    runtime = tmp_path / "runtime-custom"
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    (config_dir / "settings.json").write_text(
+        json.dumps(
+            {
+                "runtime_root": str(runtime),
+                "helper_host": "127.0.0.1",
+                "helper_port": 9876,
+                "auth_token": "generated-secret",
+                "minimum_start_free_gb": 6,
+                "warning_free_gb": 3,
+                "stop_free_gb": 1,
+                "buffer_seconds": 30,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    settings = Settings.for_project(tmp_path)
+
+    assert settings.runtime_root == runtime.resolve()
+    assert settings.auth_token == "generated-secret"
+    assert settings.helper_port == 9876
+    assert settings.minimum_start_free_gb == 6
