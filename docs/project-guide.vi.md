@@ -182,8 +182,16 @@ Model sẽ nằm trong `runtime\models`.
 
 ### Bước 3: chạy backend local
 
+Nếu bạn dùng PowerShell:
+
 ```powershell
 .\scripts\start-helper.ps1
+```
+
+Nếu bạn dùng Git Bash:
+
+```bash
+./scripts/start-helper.sh
 ```
 
 Tên script vẫn là `start-helper.ps1` vì code hiện tại chưa đổi package name. Nhưng về mặt khái niệm, đây là lệnh khởi động backend local.

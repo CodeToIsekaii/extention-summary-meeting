@@ -26,8 +26,16 @@ Trên máy này các model đã được cài trong `runtime\models` trên ổ D
 
 ## Chạy backend local
 
+Nếu bạn dùng PowerShell:
+
 ```powershell
 .\scripts\start-helper.ps1
+```
+
+Nếu bạn dùng Git Bash:
+
+```bash
+./scripts/start-helper.sh
 ```
 
 Giữ cửa sổ backend local chạy trong lúc dùng extension.
