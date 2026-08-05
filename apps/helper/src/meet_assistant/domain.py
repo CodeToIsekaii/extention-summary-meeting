@@ -8,6 +8,9 @@ from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 AudioSource = Literal["remote", "me"]
 SessionStatus = Literal["recording", "processing", "failed", "completed"]
+ProcessingStage = Literal[
+    "audio", "whisper_me", "whisper_remote", "merge_transcript", "summary", "finalize", "completed"
+]
 
 
 class SessionCreate(BaseModel):
@@ -45,6 +48,8 @@ class SessionManifest(BaseModel):
         default_factory=lambda: {"remote": [], "me": []}
     )
     error: str | None = None
+    processing_stage: ProcessingStage | None = None
+    processing_progress: int = Field(default=0, ge=0, le=100)
 
 
 class ChunkReceipt(BaseModel):

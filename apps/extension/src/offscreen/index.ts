@@ -112,7 +112,7 @@ function attachRecorder(stream: MediaStream, source: AudioSource): MediaRecorder
         void stopCapture(false);
       });
   };
-  recorder.start(5000);
+  recorder.start(30000);
   return recorder;
 }
 

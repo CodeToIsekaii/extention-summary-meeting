@@ -1,0 +1,1 @@
+"""Summary Meeting desktop manager."""

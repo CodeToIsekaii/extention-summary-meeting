@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -9,7 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
 
-from .domain import MeetingMinutes
+from .domain import MeetingMinutes, TranscriptSegment
 from .resources import PauseGate
 from .storage import MeetingRepository
 from .summarization import Summarizer, enforce_evidence_policy
@@ -66,18 +67,53 @@ class FinalizationPipeline:
         temporary_output.mkdir(parents=True)
         try:
             self.pause_gate.wait()
-            self.repository.verify_chunks(session_id)
-            recording_path = temporary_output / "recording.webm"
-            self.audio_finalizer.finalize(session_path, recording_path)
+            recording_path = session_path / "recording.webm"
+            if not recording_path.is_file() or recording_path.stat().st_size == 0:
+                self.repository.update_processing(session_id, "audio", 10)
+                self.repository.verify_chunks(session_id)
+                self.audio_finalizer.finalize(session_path, recording_path)
             if not recording_path.is_file() or recording_path.stat().st_size == 0:
                 raise RuntimeError("audio finalizer produced an empty recording")
 
             self.pause_gate.wait()
-            stt_segments = self.transcriber.transcribe(session_path)
+            transcript_path = session_path / "transcript-stt.json"
+            if transcript_path.is_file():
+                stt_segments = [
+                    TranscriptSegment.model_validate(item)
+                    for item in json.loads(transcript_path.read_text(encoding="utf-8"))
+                ]
+            else:
+                self.repository.update_processing(session_id, "whisper_me", 35)
+                stt_segments = self.transcriber.transcribe(session_path)
+                transcript_path.write_text(
+                    json.dumps([item.model_dump(mode="json") for item in stt_segments], ensure_ascii=False, indent=2),
+                    encoding="utf-8",
+                )
+                # Keep explicit per-track artifacts for resume/diagnostics.
+                for source, filename in (("stt_me", "transcript-me.json"), ("stt_remote", "transcript-remote.json")):
+                    values = [item.model_dump(mode="json") for item in stt_segments if item.source == source]
+                    (session_path / filename).write_text(json.dumps(values, ensure_ascii=False, indent=2), encoding="utf-8")
             captions = self.repository.load_captions(session_id)
-            transcript = merge_transcripts(captions, stt_segments)
+            merged_path = session_path / "transcript-merged.json"
+            if merged_path.is_file():
+                transcript = [
+                    TranscriptSegment.model_validate(item)
+                    for item in json.loads(merged_path.read_text(encoding="utf-8"))
+                ]
+            else:
+                self.repository.update_processing(session_id, "merge_transcript", 65)
+                transcript = merge_transcripts(captions, stt_segments)
+                merged_path.write_text(
+                    json.dumps([item.model_dump(mode="json") for item in transcript], ensure_ascii=False, indent=2),
+                    encoding="utf-8",
+                )
             self.pause_gate.wait()
-            minutes = self.summarizer.summarize(session_id, manifest.title, transcript)
+            draft_path = session_path / "minutes-draft.json"
+            if draft_path.is_file():
+                minutes = MeetingMinutes.model_validate_json(draft_path.read_text(encoding="utf-8"))
+            else:
+                self.repository.update_processing(session_id, "summary", 80)
+                minutes = self.summarizer.summarize(session_id, manifest.title, transcript)
             participants = sorted(
                 {
                     item.speaker
@@ -111,12 +147,16 @@ class FinalizationPipeline:
             )
             minutes = enforce_evidence_policy(minutes)
             minutes_path = temporary_output / "minutes.json"
+            self.repository.update_processing(session_id, "finalize", 95)
+            draft_path.write_text(minutes.model_dump_json(indent=2), encoding="utf-8")
+            shutil.copy2(recording_path, temporary_output / "recording.webm")
             minutes_path.write_text(minutes.model_dump_json(indent=2), encoding="utf-8")
             MeetingMinutes.model_validate_json(minutes_path.read_text(encoding="utf-8"))
 
             self.pause_gate.wait()
             output_dir = self._available_output_dir(manifest.title, manifest.started_at)
             os.replace(temporary_output, output_dir)
+            self.repository.update_processing(session_id, "completed", 100)
             shutil.rmtree(session_path)
             return FinalizationResult(output_dir=output_dir, minutes=minutes)
         except Exception as error:

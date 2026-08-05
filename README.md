@@ -42,6 +42,12 @@ Nếu dùng Windows và không muốn gõ lệnh, double-click file `scripts\sta
 
 Giữ cửa sổ backend local chạy trong lúc dùng extension.
 
+## App desktop xử lý recovery
+
+Mở `scripts\start-desktop.bat` để chạy Summary Meeting Manager. App tự khởi động backend local, liệt kê các phiên chưa hoàn tất và chỉ xử lý phiên bạn chọn bằng **Tiếp tục xử lý**. Không cần mở Google Meet hoặc side panel.
+
+App lưu stage xử lý trên ổ D và có thể tiếp tục từ stage đã dừng sau khi tắt app hoặc máy. Chỉ một phiên được xử lý tại một thời điểm.
+
 ## Cài extension vào Chrome
 
 1. Mở `chrome://extensions`.

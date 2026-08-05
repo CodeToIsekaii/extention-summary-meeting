@@ -1,0 +1,8 @@
+{
+  "hooks": {
+    "before_completion": ["run tests and build"],
+    "after_edit": ["optional formatter"],
+    "dangerous_operation": ["backup recovery manifest first"]
+  },
+  "enabled": false
+}

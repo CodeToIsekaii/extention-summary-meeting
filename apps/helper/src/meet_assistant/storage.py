@@ -15,6 +15,7 @@ from .domain import (
     ChunkMetadata,
     ChunkReceipt,
     MeetingMinutes,
+    ProcessingStage,
     SessionCreate,
     SessionManifest,
     SessionStatus,
@@ -174,6 +175,21 @@ class MeetingRepository:
         manifest.error = error
         if status in {"failed", "completed"}:
             manifest.ended_at = datetime.now(UTC)
+        self._save_manifest(manifest)
+        return manifest
+
+    def update_processing(
+        self,
+        session_id: str,
+        stage: ProcessingStage,
+        progress: int,
+        error: str | None = None,
+    ) -> SessionManifest:
+        manifest = self.load_manifest(session_id)
+        manifest.status = "processing"
+        manifest.processing_stage = stage
+        manifest.processing_progress = max(0, min(100, progress))
+        manifest.error = error
         self._save_manifest(manifest)
         return manifest
 

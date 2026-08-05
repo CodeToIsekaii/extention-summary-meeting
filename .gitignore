@@ -1,4 +1,8 @@
 .venv/
+.codex/local.md
+.codex/memory/user-preferences.md
+.codex/settings/*.json
+!.codex/settings/hooks.example.json
 node_modules/
 dist/
 coverage/
@@ -14,4 +18,3 @@ runtime/*
 # Local secrets and generated configuration.
 config/settings.json
 apps/extension/.env.local
-

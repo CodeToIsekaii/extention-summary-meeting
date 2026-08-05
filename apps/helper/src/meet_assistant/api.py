@@ -192,11 +192,19 @@ def create_app(
                 status_code=404,
                 detail={"code": "session_not_found", "message": session_id},
             ) from error
+
+    @app.post(
+        "/v1/sessions/{session_id}/process",
+        status_code=status.HTTP_202_ACCEPTED,
+        dependencies=[Depends(require_auth)],
+    )
+    def process(session_id: str):
+        try:
+            return coordinator.retry(session_id)
+        except SessionNotFoundError as error:
+            raise HTTPException(status_code=404, detail={"code": "session_not_found", "message": session_id}) from error
         except ValueError as error:
-            raise HTTPException(
-                status_code=409,
-                detail={"code": "invalid_session_state", "message": str(error)},
-            ) from error
+            raise HTTPException(status_code=409, detail={"code": "invalid_session_state", "message": str(error)}) from error
 
     @app.post("/v1/sessions/{session_id}/pause", dependencies=[Depends(require_auth)])
     def pause(session_id: str):
@@ -247,6 +255,18 @@ def create_app(
                 status_code=404,
                 detail={"code": "session_not_found", "message": session_id},
             ) from error
+
+    @app.get("/v1/meetings", dependencies=[Depends(require_auth)])
+    def meetings():
+        results: list[dict[str, Any]] = []
+        for path in sorted(settings.meetings_dir.glob("*/minutes.json"), reverse=True):
+            try:
+                import json
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError, TypeError):
+                continue
+            results.append({"id": payload.get("meeting_id"), "title": payload.get("title", path.parent.name), "output_dir": str(path.parent)})
+        return results
 
     @app.patch("/v1/sessions/{session_id}/minutes", dependencies=[Depends(require_auth)])
     def patch_minutes(session_id: str, patch: dict[str, Any]):

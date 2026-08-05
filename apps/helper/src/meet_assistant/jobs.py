@@ -107,12 +107,18 @@ class ProcessingCoordinator:
                     auto_paused = False
 
     def submit_finalize(self, session_id: str) -> dict[str, Any]:
-        self.repository.load_manifest(session_id)
+        manifest = self.repository.load_manifest(session_id)
         with self._lock:
             existing = self._jobs.get(session_id)
             if existing and existing["status"] == "processing":
                 return existing
-            state = {"session_id": session_id, "status": "processing", "error": None}
+            state = {
+                "session_id": session_id,
+                "status": "processing",
+                "stage": manifest.processing_stage or "audio",
+                "progress": manifest.processing_progress,
+                "error": None,
+            }
             self._jobs[session_id] = state
 
         def run_pipeline():
@@ -180,7 +186,10 @@ class ProcessingCoordinator:
     def status(self, session_id: str) -> dict[str, Any]:
         with self._lock:
             if session_id in self._jobs:
-                return dict(self._jobs[session_id])
+                state = dict(self._jobs[session_id])
+                manifest = self.repository.load_manifest(session_id)
+                state.update({"stage": manifest.processing_stage, "progress": manifest.processing_progress})
+                return state
         try:
             minutes = self.repository.load_minutes(session_id)
             return {
@@ -188,6 +197,8 @@ class ProcessingCoordinator:
                 "status": "completed",
                 "title": minutes.title,
                 "error": None,
+                "stage": "completed",
+                "progress": 100,
             }
         except SessionNotFoundError:
             manifest = self.repository.load_manifest(session_id)
@@ -196,4 +207,6 @@ class ProcessingCoordinator:
                 "status": manifest.status,
                 "title": manifest.title,
                 "error": manifest.error,
+                "stage": manifest.processing_stage,
+                "progress": manifest.processing_progress,
             }
