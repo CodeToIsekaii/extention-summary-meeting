@@ -1,3 +1,2 @@
 @echo off
-cd /d "%~dp0.."
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0start-desktop.ps1"
+start "" /b wscript.exe "%~dp0start-desktop.vbs"

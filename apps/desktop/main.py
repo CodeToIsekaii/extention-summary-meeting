@@ -62,10 +62,12 @@ class DesktopApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("Summary Meeting Manager")
-        self.geometry("820x520")
-        self.minsize(700, 420)
+        self.geometry("920x700")
+        self.minsize(760, 560)
         self.client = BackendClient()
         self.backend: subprocess.Popen[bytes] | None = None
+        self.log_handle = None
+        self.log_path = ROOT / "runtime" / "logs" / "desktop-backend.log"
         self.rows: dict[str, dict] = {}
         self.selected_id: str | None = None
         self.status_var = tk.StringVar(value="Đang khởi động backend local…")
@@ -96,6 +98,14 @@ class DesktopApp(tk.Tk):
         ttk.Button(actions, text="Tiếp tục", command=self._resume).pack(side="left", padx=(0, 8))
         ttk.Button(actions, text="Xóa recovery", command=self._delete).pack(side="left", padx=(0, 8))
         ttk.Button(actions, text="Làm mới", command=self.refresh).pack(side="right")
+        log_frame = ttk.LabelFrame(outer, text="Nhật ký backend local", padding=6)
+        log_frame.pack(fill="both", expand=True, pady=(12, 0))
+        self.log_text = tk.Text(log_frame, height=8, state="disabled", wrap="none", font=("Consolas", 9))
+        self.log_text.pack(side="left", fill="both", expand=True)
+        log_scroll = ttk.Scrollbar(log_frame, orient="vertical", command=self.log_text.yview)
+        log_scroll.pack(side="right", fill="y")
+        self.log_text.configure(yscrollcommand=log_scroll.set)
+        self.after(1500, self.refresh_log)
 
     def _start_backend(self) -> None:
         try:
@@ -107,6 +117,8 @@ class DesktopApp(tk.Tk):
                 return
             env = os.environ.copy()
             env["PYTHONPATH"] = str(ROOT / "apps" / "helper" / "src")
+            self.log_path.parent.mkdir(parents=True, exist_ok=True)
+            self.log_handle = self.log_path.open("ab")
             self.backend = subprocess.Popen(
                 [str(PYTHON), "-m", "meet_assistant.main"],
                 cwd=str(ROOT),
@@ -115,6 +127,9 @@ class DesktopApp(tk.Tk):
                     getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
                     | getattr(subprocess, "CREATE_NO_WINDOW", 0)
                 ),
+                stdin=subprocess.DEVNULL,
+                stdout=self.log_handle,
+                stderr=subprocess.STDOUT,
             )
             self._wait_for_backend()
 
@@ -149,6 +164,18 @@ class DesktopApp(tk.Tk):
                 item.get("processing_stage") or "-", item.get("processing_progress", 0), item.get("error") or "",
             ))
         self.after(3000, self.refresh)
+
+    def refresh_log(self) -> None:
+        try:
+            content = self.log_path.read_text(encoding="utf-8", errors="replace")
+            self.log_text.configure(state="normal")
+            self.log_text.delete("1.0", "end")
+            self.log_text.insert("end", "\n".join(content.splitlines()[-120:]))
+            self.log_text.see("end")
+            self.log_text.configure(state="disabled")
+        except OSError:
+            pass
+        self.after(1500, self.refresh_log)
 
     def _select(self, _event: object = None) -> None:
         selected = self.table.selection()
@@ -186,6 +213,8 @@ class DesktopApp(tk.Tk):
     def _close(self) -> None:
         if self.backend and self.backend.poll() is None:
             self.backend.terminate()
+        if self.log_handle:
+            self.log_handle.close()
         self.destroy()
 
 
