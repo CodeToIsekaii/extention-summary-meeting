@@ -111,7 +111,10 @@ class DesktopApp(tk.Tk):
                 [str(PYTHON), "-m", "meet_assistant.main"],
                 cwd=str(ROOT),
                 env=env,
-                creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
+                creationflags=(
+                    getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+                    | getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                ),
             )
             self._wait_for_backend()
 
