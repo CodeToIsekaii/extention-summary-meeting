@@ -10,6 +10,7 @@ Nếu bạn quen tư duy fullstack, hãy hiểu đơn giản:
 - `Qwen` = engine tóm tắt và trích xuất task
 
 Tài liệu giải thích chi tiết, dễ đọc cho người mới nằm ở [docs/project-guide.vi.md](/abs/path/D:/MyProject/extention%20summary%20meeting/docs/project-guide.vi.md).
+Sơ đồ kiến trúc và quy tắc phân loại thư mục nằm ở [docs/architecture.vi.md](/abs/path/D:/MyProject/extention%20summary%20meeting/docs/architecture.vi.md).
 
 ## Cài đặt
 
@@ -95,6 +96,15 @@ Sau đó mở `chrome://extensions` và bấm **Reload** ở Summary Meeting Loc
 ```
 
 `verify.ps1` chạy unit test, lint và production build. Hai smoke script nạp model thật; `smoke_e2e.py` còn tạo một phiên giả lập qua toàn bộ API/pipeline. Việc cấp quyền tab/mic trong Google Meet thật cần kiểm tra thủ công vì Chrome không cho tự động hóa permission prompt ổn định.
+
+Nếu cần dọn cache/generated files mà không đụng vào model, bản ghi hoặc recovery, dùng PowerShell:
+
+```powershell
+.\scripts\clean-generated.ps1 -WhatIf
+.\scripts\clean-generated.ps1 -IncludePythonCaches
+```
+
+Muốn tạo lại thư mục `dist` sau khi dọn thì chạy `npm run build` trong `apps\extension`.
 
 Sau khi ghi một cuộc Meet thật, kiểm tra file, schema, evidence, cleanup và khả năng giải mã audio bằng:
 
