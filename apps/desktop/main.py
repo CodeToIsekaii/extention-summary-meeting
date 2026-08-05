@@ -156,6 +156,7 @@ class DesktopApp(tk.Tk):
         threading.Thread(target=load, daemon=True).start()
 
     def _render(self, sessions: list[dict]) -> None:
+        selected_id = self.selected_id
         self.rows = {item["id"]: item for item in sessions}
         self.table.delete(*self.table.get_children())
         for item in sessions:
@@ -163,6 +164,10 @@ class DesktopApp(tk.Tk):
                 item.get("title", ""), item.get("status", ""),
                 item.get("processing_stage") or "-", item.get("processing_progress", 0), item.get("error") or "",
             ))
+        if selected_id and selected_id in self.rows:
+            self.table.selection_set(selected_id)
+            self.table.focus(selected_id)
+            self.selected_id = selected_id
         self.after(3000, self.refresh)
 
     def refresh_log(self) -> None:
