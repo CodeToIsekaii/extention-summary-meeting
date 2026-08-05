@@ -54,6 +54,9 @@ class BackendClient:
     def resume(self, session_id: str) -> dict:
         return self.request(f"/sessions/{session_id}/resume", "POST")  # type: ignore[return-value]
 
+    def fast(self, session_id: str) -> dict:
+        return self.request(f"/sessions/{session_id}/fast", "POST")  # type: ignore[return-value]
+
     def delete(self, session_id: str) -> None:
         self.request(f"/sessions/{session_id}", "DELETE")
 
@@ -93,9 +96,10 @@ class DesktopApp(tk.Tk):
         ttk.Label(outer, textvariable=self.progress_var).pack(anchor="w", pady=8)
         actions = ttk.Frame(outer)
         actions.pack(fill="x")
-        ttk.Button(actions, text="Tiếp tục xử lý", command=self._process).pack(side="left", padx=(0, 8))
+        ttk.Button(actions, text="Bắt đầu / xử lý lại", command=self._process).pack(side="left", padx=(0, 8))
         ttk.Button(actions, text="Tạm dừng", command=self._pause).pack(side="left", padx=(0, 8))
-        ttk.Button(actions, text="Tiếp tục", command=self._resume).pack(side="left", padx=(0, 8))
+        ttk.Button(actions, text="Tiếp tục sau tạm dừng", command=self._resume).pack(side="left", padx=(0, 8))
+        ttk.Button(actions, text="Chế độ Nhanh", command=self._fast).pack(side="left", padx=(0, 8))
         ttk.Button(actions, text="Xóa recovery", command=self._delete).pack(side="left", padx=(0, 8))
         ttk.Button(actions, text="Làm mới", command=self.refresh).pack(side="right")
         log_frame = ttk.LabelFrame(outer, text="Nhật ký backend local", padding=6)
@@ -209,6 +213,9 @@ class DesktopApp(tk.Tk):
 
     def _resume(self) -> None:
         self._run_action(self.client.resume, "Đã tiếp tục phiên")
+
+    def _fast(self) -> None:
+        self._run_action(self.client.fast, "Đã bật Chế độ Nhanh")
 
     def _delete(self) -> None:
         if not self.selected_id or not messagebox.askyesno("Xóa recovery", "Xóa toàn bộ dữ liệu tạm của phiên này?"):
