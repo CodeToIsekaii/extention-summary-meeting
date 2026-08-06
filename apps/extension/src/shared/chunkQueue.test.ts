@@ -28,6 +28,19 @@ describe("BoundedChunkQueue", () => {
     ).toThrow("Audio buffer exceeded 30000ms");
   });
 
+  it("accepts one recorder chunk that slightly exceeds its nominal timeslice", () => {
+    const queue = new BoundedChunkQueue(30_000);
+
+    queue.push({
+      source: "remote",
+      sequence: 0,
+      durationMs: 30_050,
+      blob: new Blob(["audio"])
+    });
+
+    expect(queue.peek()?.sequence).toBe(0);
+  });
+
   it("can discard a failed session before the next recording starts", () => {
     const queue = new BoundedChunkQueue(30_000);
     queue.push({ source: "remote", sequence: 0, durationMs: 5000, blob: new Blob(["a"]) });

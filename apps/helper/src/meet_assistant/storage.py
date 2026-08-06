@@ -6,6 +6,7 @@ import shutil
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
+from threading import Lock
 from typing import Any
 
 from .config import Settings
@@ -34,6 +35,10 @@ class ChunkConflictError(ValueError):
 class MeetingRepository:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
+        # remote and microphone chunks arrive concurrently. Protect the
+        # read-modify-write manifest update so one track cannot overwrite the
+        # other's sequence/checkpoint.
+        self._chunk_lock = Lock()
 
     def work_path(self, session_id: str) -> Path:
         return self.settings.work_dir / session_id
@@ -76,6 +81,12 @@ class MeetingRepository:
         return self.load_manifest(session_id).next_sequence[source]  # type: ignore[index]
 
     def append_chunk(
+        self, session_id: str, metadata: ChunkMetadata, payload: bytes
+    ) -> ChunkReceipt:
+        with self._chunk_lock:
+            return self._append_chunk(session_id, metadata, payload)
+
+    def _append_chunk(
         self, session_id: str, metadata: ChunkMetadata, payload: bytes
     ) -> ChunkReceipt:
         manifest = self.load_manifest(session_id)

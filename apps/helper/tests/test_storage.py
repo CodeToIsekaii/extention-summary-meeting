@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from hashlib import sha256
 from pathlib import Path
 
@@ -67,6 +68,31 @@ def test_append_chunk_rejects_corrupt_payload(repository: MeetingRepository) -> 
 
     with pytest.raises(ChunkConflictError, match="checksum"):
         repository.append_chunk(session.id, metadata, b"corrupt")
+
+
+def test_append_chunks_from_two_tracks_preserves_both_manifest_updates(
+    repository: MeetingRepository,
+) -> None:
+    session = repository.create_session(SessionCreate(title="Concurrent tracks"))
+    payloads = {"remote": b"remote-audio", "me": b"microphone-audio"}
+
+    def upload(source: str):
+        payload = payloads[source]
+        return repository.append_chunk(
+            session.id,
+            ChunkMetadata(
+                source=source, sequence=0, started_at_ms=0, duration_ms=30000,
+                sha256=sha256(payload).hexdigest(),
+            ),
+            payload,
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        receipts = list(executor.map(upload, payloads))
+
+    assert {receipt.source for receipt in receipts} == {"remote", "me"}
+    assert repository.expected_sequence(session.id, "remote") == 1
+    assert repository.expected_sequence(session.id, "me") == 1
 
 
 def test_finalize_verification_detects_chunk_corrupted_after_upload(

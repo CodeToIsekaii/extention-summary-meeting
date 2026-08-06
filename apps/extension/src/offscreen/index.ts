@@ -1,5 +1,6 @@
 import { BoundedChunkQueue } from "../shared/chunkQueue";
 import { HelperClient, isFatalUploadError } from "../shared/helperClient";
+import { SingleFlight } from "../shared/singleFlight";
 import type { AudioSource, ChunkEnvelope } from "../shared/types";
 
 interface StartMessage {
@@ -16,7 +17,7 @@ let tabStream: MediaStream | null = null;
 let micStream: MediaStream | null = null;
 let audioContext: AudioContext | null = null;
 let recorders: MediaRecorder[] = [];
-let stopping = false;
+const stopGate = new SingleFlight<{ ok: boolean; error?: string }>();
 let retryTimer: number | null = null;
 let retrying = false;
 let captureStartedAt = 0;
@@ -87,7 +88,7 @@ function attachRecorder(stream: MediaStream, source: AudioSource): MediaRecorder
     const endedAtMs = Math.max(1, Date.now() - captureStartedAt);
     const chunk: ChunkEnvelope = {
       source,
-      sequence: sequences[source]++,
+      sequence: sequences[source],
       startedAtMs: lastChunkAtMs,
       durationMs: Math.max(1, endedAtMs - lastChunkAtMs),
       blob: event.data
@@ -95,6 +96,7 @@ function attachRecorder(stream: MediaStream, source: AudioSource): MediaRecorder
     lastChunkAtMs = endedAtMs;
     try {
       queues[source].push(chunk);
+      sequences[source] += 1;
     } catch (error) {
       broadcast("CAPTURE_FAILED", { error: error instanceof Error ? error.message : String(error) });
       void stopCapture(false);
@@ -123,7 +125,6 @@ async function startCapture(message: StartMessage): Promise<{ ok: boolean; error
   try {
     client = new HelperClient(message.token);
     sessionId = message.sessionId;
-    stopping = false;
     captureStartedAt = Date.now();
     sequences.remote = 0;
     sequences.me = 0;
@@ -159,6 +160,8 @@ async function startCapture(message: StartMessage): Promise<{ ok: boolean; error
 
 async function stopRecorder(recorder: MediaRecorder): Promise<void> {
   if (recorder.state === "inactive") return;
+  // Force the final partial interval to be emitted before stopping.
+  recorder.requestData();
   await new Promise<void>((resolve) => {
     recorder.addEventListener("stop", () => resolve(), { once: true });
     recorder.stop();
@@ -166,8 +169,10 @@ async function stopRecorder(recorder: MediaRecorder): Promise<void> {
 }
 
 async function stopCapture(finalize: boolean): Promise<{ ok: boolean; error?: string }> {
-  if (stopping) return { ok: true };
-  stopping = true;
+  return stopGate.run(() => finishCapture(finalize));
+}
+
+async function finishCapture(finalize: boolean): Promise<{ ok: boolean; error?: string }> {
   const currentSession = sessionId;
   try {
     await Promise.all(recorders.map(stopRecorder));
@@ -195,7 +200,6 @@ async function stopCapture(finalize: boolean): Promise<{ ok: boolean; error?: st
     queues.remote.clear();
     queues.me.clear();
     stopRetryTimer();
-    stopping = false;
   }
 }
 

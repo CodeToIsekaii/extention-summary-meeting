@@ -10,7 +10,7 @@ export class BoundedChunkQueue {
 
   push(chunk: ChunkEnvelope): void {
     const bufferedDuration = this.chunks.reduce((sum, item) => sum + item.durationMs, 0);
-    if (bufferedDuration + chunk.durationMs > this.maxDurationMs) {
+    if (this.chunks.length > 0 && bufferedDuration + chunk.durationMs > this.maxDurationMs) {
       throw new Error(`Audio buffer exceeded ${this.maxDurationMs}ms`);
     }
     this.chunks.push(chunk);

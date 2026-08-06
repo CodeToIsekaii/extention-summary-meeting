@@ -82,11 +82,8 @@ export function App() {
               chrome.tabCapture.getCapturedTabs(resolve);
             });
             if (!captures.some((capture) => capture.status === "active")) {
-              dispatch({
-                type: "FAILED",
-                message: "Phiên ghi trước đã bị gián đoạn. Chọn Xử lý lại trong Recovery."
-              });
               await chrome.storage.local.remove("activeSession");
+              dispatch({ type: "RESET" });
             }
           }
         } catch (error) {
@@ -140,6 +137,7 @@ export function App() {
     const listener = (message: { type: string; error?: string }) => {
       if (message.type === "CAPTURE_PROCESSING") dispatch({ type: "PROCESSING" });
       if (message.type === "CAPTURE_FAILED") {
+        void chrome.storage.local.remove("activeSession");
         dispatch({ type: "FAILED", message: message.error ?? "Ghi âm bị gián đoạn." });
       }
     };
@@ -190,6 +188,7 @@ export function App() {
       if (!response?.ok) throw new Error(response?.error ?? "Không thể bắt đầu capture.");
       dispatch({ type: "STARTED", sessionId: session.id, startedAt });
     } catch (error) {
+      await chrome.storage.local.remove("activeSession");
       dispatch({ type: "FAILED", message: error instanceof Error ? error.message : String(error) });
     }
   };

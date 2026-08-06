@@ -45,6 +45,9 @@ class BackendClient:
     def sessions(self) -> list[dict]:
         return self.request("/sessions", "GET")  # type: ignore[return-value]
 
+    def meetings(self) -> list[dict]:
+        return self.request("/meetings", "GET")  # type: ignore[return-value]
+
     def process(self, session_id: str) -> dict:
         return self.request(f"/sessions/{session_id}/process", "POST")  # type: ignore[return-value]
 
@@ -153,17 +156,29 @@ class DesktopApp(tk.Tk):
         def load() -> None:
             try:
                 sessions = self.client.sessions()
-                self.after(0, lambda: self._render(sessions))
+                meetings = self.client.meetings()
+                self.after(0, lambda: self._render(sessions, meetings))
             except OSError as error:
                 message = str(error)
                 self.after(0, lambda: self.status_var.set(f"Lỗi kết nối backend: {message}"))
         threading.Thread(target=load, daemon=True).start()
 
-    def _render(self, sessions: list[dict]) -> None:
+    def _render(self, sessions: list[dict], meetings: list[dict]) -> None:
         selected_id = self.selected_id
-        self.rows = {item["id"]: item for item in sessions}
+        completed = [
+            {
+                **item,
+                "status": "completed",
+                "processing_stage": "completed",
+                "processing_progress": 100,
+                "error": None,
+            }
+            for item in meetings
+        ]
+        all_items = sessions + completed
+        self.rows = {item["id"]: item for item in all_items}
         self.table.delete(*self.table.get_children())
-        for item in sessions:
+        for item in all_items:
             self.table.insert("", "end", iid=item["id"], values=(
                 item.get("title", ""), item.get("status", ""),
                 item.get("processing_stage") or "-", item.get("processing_progress", 0), item.get("error") or "",
@@ -196,6 +211,13 @@ class DesktopApp(tk.Tk):
     def _run_action(self, action, success: str) -> None:
         if not self.selected_id:
             messagebox.showinfo("Chọn phiên", "Hãy chọn một phiên trong danh sách trước.")
+            return
+        selected = self.rows.get(self.selected_id)
+        if selected and selected.get("status") == "completed":
+            messagebox.showinfo(
+                "Cuộc họp đã hoàn tất",
+                "Cuộc họp này đã được lưu trong runtime\\meetings; không cần xử lý lại.",
+            )
             return
         session_id = self.selected_id
         try:

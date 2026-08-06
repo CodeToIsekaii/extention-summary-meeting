@@ -257,6 +257,30 @@ def test_minutes_can_be_read_and_edited_without_changing_meeting_identity(
     assert repository.load_minutes("fixed-id").summary == "Đã sửa"
 
 
+def test_completed_meetings_are_listed_separately_from_recoverable_sessions(
+    settings: Settings, auth: dict[str, str]
+) -> None:
+    meeting_dir = settings.meetings_dir / "2026-08-06_meet"
+    meeting_dir.mkdir(parents=True)
+    (meeting_dir / "recording.webm").write_bytes(b"audio")
+    (meeting_dir / "minutes.json").write_text(
+        MeetingMinutes(meeting_id="completed-id", title="Completed meeting", summary="Done").model_dump_json(),
+        encoding="utf-8",
+    )
+
+    client = TestClient(create_app(settings))
+    response = client.get("/v1/meetings", headers=auth)
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "id": "completed-id",
+            "title": "Completed meeting",
+            "output_dir": str(meeting_dir),
+        }
+    ]
+
+
 def test_chunk_upload_stops_when_disk_reaches_emergency_threshold(
     settings: Settings, auth: dict[str, str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
