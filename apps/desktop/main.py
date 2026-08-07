@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import html
 import os
 import subprocess
 import threading
 import tkinter as tk
+import webbrowser
 from pathlib import Path
 from tkinter import messagebox, ttk
 from urllib.request import Request, urlopen
@@ -47,6 +49,9 @@ class BackendClient:
 
     def meetings(self) -> list[dict]:
         return self.request("/meetings", "GET")  # type: ignore[return-value]
+
+    def minutes(self, meeting_id: str) -> dict:
+        return self.request(f"/sessions/{meeting_id}/minutes", "GET")  # type: ignore[return-value]
 
     def process(self, session_id: str) -> dict:
         return self.request(f"/sessions/{session_id}/process", "POST")  # type: ignore[return-value]
@@ -103,6 +108,7 @@ class DesktopApp(tk.Tk):
         ttk.Button(actions, text="Tạm dừng", command=self._pause).pack(side="left", padx=(0, 8))
         ttk.Button(actions, text="Tiếp tục sau tạm dừng", command=self._resume).pack(side="left", padx=(0, 8))
         ttk.Button(actions, text="Chế độ Nhanh", command=self._fast).pack(side="left", padx=(0, 8))
+        ttk.Button(actions, text="Xem biên bản AI", command=self._open_minutes).pack(side="left", padx=(0, 8))
         ttk.Button(actions, text="Xóa recovery", command=self._delete).pack(side="left", padx=(0, 8))
         ttk.Button(actions, text="Làm mới", command=self.refresh).pack(side="right")
         log_frame = ttk.LabelFrame(outer, text="Nhật ký backend local", padding=6)
@@ -238,6 +244,51 @@ class DesktopApp(tk.Tk):
 
     def _fast(self) -> None:
         self._run_action(self.client.fast, "Đã bật Chế độ Nhanh")
+
+    def _open_minutes(self) -> None:
+        if not self.selected_id:
+            messagebox.showinfo("Chọn cuộc họp", "Hãy chọn cuộc họp đã hoàn tất trước.")
+            return
+        selected = self.rows.get(self.selected_id)
+        output_dir = selected.get("output_dir") if selected else None
+        if not output_dir:
+            messagebox.showinfo(
+                "Chưa có biên bản",
+                "Cuộc họp này chưa có biên bản hoàn tất để mở.",
+            )
+            return
+        try:
+            minutes = self.client.minutes(self.selected_id)
+            output_path = Path(output_dir)
+            audio_uri = (output_path / "recording.webm").as_uri()
+            def item_list(values: list[str]) -> str:
+                return "".join(f"<li>{html.escape(str(value))}</li>" for value in values) or "<li>Không có.</li>"
+            transcript = "".join(
+                f"<p><time>{int(item.get('start_ms', 0)) // 1000}s</time> "
+                f"<strong>{html.escape(str(item.get('speaker') or 'Chưa xác định'))}:</strong> "
+                f"{html.escape(str(item.get('text', '')))}</p>"
+                for item in minutes.get("transcript", [])
+            ) or "<p>Không có transcript.</p>"
+            view_path = Path(self.log_path).parent.parent / "tmp" / f"minutes-view-{self.selected_id}.html"
+            view_path.parent.mkdir(parents=True, exist_ok=True)
+            title = html.escape(str(minutes.get("title", "Biên bản cuộc họp")))
+            view_path.write_text(
+                "<!doctype html><html lang='vi'><meta charset='utf-8'>"
+                "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+                f"<title>{title}</title><style>body{{max-width:960px;margin:32px auto;padding:0 24px;font:16px/1.6 Segoe UI,Arial;color:#172033}}"
+                "h1{color:#153a9b}section{margin:24px 0;padding:20px;border:1px solid #dfe4ec;border-radius:14px}"
+                "time{color:#3157d5;margin-right:8px}audio{width:100%}</style>"
+                f"<h1>{title}</h1><section><h2>Tóm tắt</h2><p>{html.escape(str(minutes.get('summary', '')))}</p></section>"
+                f"<section><h2>Quyết định</h2><ul>{item_list(minutes.get('decisions', []))}</ul></section>"
+                f"<section><h2>Công việc</h2><ul>{item_list([str(item.get('task', item)) for item in minutes.get('action_items', [])])}</ul></section>"
+                f"<section><h2>Câu hỏi còn mở</h2><ul>{item_list(minutes.get('open_questions', []))}</ul></section>"
+                f"<section><h2>Audio</h2><audio controls src='{audio_uri}'></audio></section>"
+                f"<section><h2>Transcript</h2>{transcript}</section></html>",
+                encoding="utf-8",
+            )
+            webbrowser.open(view_path.as_uri())
+        except OSError as error:
+            messagebox.showerror("Không mở được biên bản AI", str(error))
 
     def _delete(self) -> None:
         if not self.selected_id or not messagebox.askyesno("Xóa recovery", "Xóa toàn bộ dữ liệu tạm của phiên này?"):
